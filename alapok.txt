@@ -1,0 +1,228 @@
+//F1.
+1. OLVASSA BE A KÉPET / SZÜRKESKÁLÁBAN
+Mat gombok = imread("Képek/color_buttons.jpg");
+
+2. KONVERTÁLJA A KÉPET HSV SZÍNTÉRBE
+cvtColor(gombok, gombhsv, COLOR_BGR2HSV);3. MÁSOLJA ÁT AZ ADOTT SZÍNT EGY FEKETE KÉPRE
+
+//F2.
+4. ŐRIZZEN MEG EGY SZÍNT, MÁST ÁLLÍTSON ÁT MÁS SZÍNRE
+Mat gombdest2;
+gombdest2.create(gombok.size(), CV_8UC3);
+gombdest2.setTo(Scalar(0,0,255));
+sgombok.copyTo(gombdest2, gombmask);
+
+5. XXX NEVŰ ABLAKBAN JELENÍTSE MEG
+imshow("XXX", gombdest2);
+
+//F3.
+6. KÜSZÖBÖLJE A KÉPET - FEKETE-FEHÉR LEGYEN
+cvtColor(pirosgomb, pszurke, COLOR_BGR2GRAY);
+	//vector<Mat> chs;
+	//split(pirosgomb, chs);  //Nem muszáj ez, be lehetett volna olvasni szürkeskálában is
+	//GaussianBlur(chs[2], chs[2], Size(5, 5), 2);
+	//threshold(chs[2], pgombmask, 220, 255, THRESH_BINARY_INV);
+	//threshold(pszurke, pszurkemask, 220, 255, THRESH_BINARY_INV);
+	//morphologyEx(pszurkemask, pszurkemask, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(3,3)))
+
+7. MENTSE AZ EREDMÉNYT
+imwrite("milyennéven.kiterjesztés",mit);
+
+//F4.
+8. KÜSZÖBÖLJÖN AUTOMATIKUS ELJÁRÁSSAL - FEKETE-FEHÉR, GOMB FEHÉR
+cvtColor(narancsgomb, ngrey, COLOR_BGR2GRAY);
+medianBlur(ngrey, ngrey, 3);
+vector<Mat> chs2;
+split(narancsgomb, chs2);
+imshow("Narancs Gomb", narancsgomb);
+adaptiveThreshold(chs2[2],ngombmask,255,ADAPTIVE_THRESH_MEAN_C,THRESH_BINARY_INV,81,1);
+adaptiveThreshold(ngrey, ngombmask, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY_INV, 81, 1);
+imshow("Narancs Gomb Maszk", ngombmask);
+imwrite("Valami.jpg", ngombmask);
+
+//F5.
+9. MÉRETEZZE ÁT A KÉPET
+resize(szurkegomb, szurkegomb, szurkegomb.size() * 2);
+
+10. SPECIÁLIS KÜSZÖBÖLÉS - MEGŐRZI AZ ELŐTERET, KINULLÁZZA A HÁTTERET
+szurkegomb = 255 - szurkegomb;
+medianBlur(szurkegomb, szurkegomb, 7);
+threshold(szurkegomb, szmask,100,255 ,THRESH_TOZERO);
+
+//F6.
+11. MOSSA EL 7X7ES MEDIÁNSZŰRŐVEL
+medianBlur(narancsgomb1, nmask, 7);
+medianBlur(pirosgomb1, pmask, 7);
+
+12. KONVERTÁLJA A KÉPEKET VALÓSSÁ.
+
+13. VÁLTSA ÁT A KÉPET LAB SZÍNTÉRBE
+//out of main:
+
+double LabDiff(const Mat img1,const Mat img2) //labdiff - Lab színtér
+{
+	Mat diff = img1 - img2;
+	//Valós számok, úgyhogy lehet negatív is, a 8U, az csak 0-255
+	Mat diff2 = diff.mul(diff);
+	vector<Mat> chs; //Csatornák
+	split(diff2, chs); //deltaL deltaA deltaB külön csatornákon
+	Mat deltaE;
+	sqrt(chs[0] + chs[1] + chs[2], deltaE);
+	return mean(deltaE)[0];
+}
+
+double LabPontDiff(const Vec3f p1,const Vec3f p2)
+{
+	Vec3f diff=p1 - p2;
+	diff[0]=diff[0]*diff[0];
+	diff[1] = diff[1] * diff[1];
+	diff[2] = diff[2] * diff[2];
+	double eredmeny = sqrt(diff[0] + diff[1] + diff[2]);
+	return eredmeny;
+}
+
+void LabConvert(const Mat src, Mat& dest)
+{
+	Mat srcf;
+	src.convertTo(srcf, CV_32FC3, 1 / 255.0); //CV_32FC3 a valós számok tartománya
+	cvtColor(srcf, dest, COLOR_BGR2Lab);
+}
+
+LabConvert(nmask,nlab);
+LabConvert(pmask,plab);
+
+14. KÉT KÉP KÖZÉPPONTJAI KÖZÖTTI TELJES SZÍNKÜLÖNBSÉG
+
+vector<Vec3f> centers;
+
+int px = plab.rows / 2;
+int py = plab.cols / 2;
+int nx = nlab.rows / 2;
+int ny = nlab.cols / 2;
+centers.push_back(plab.at<Vec3f>(py, px));
+centers.push_back(nlab.at<Vec3f>(ny, nx));
+cout<<LabPontDiff(centers[0], centers[1]);
+
+//F8.
+15. HATÁROZZA MEG A GOMBOK KÜLSŐ KÖRVONALÁT
+findContours(gombmask.clone(), contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+16. KONTÚROK MEGRAJZOLÁSA
+for (int i = 0; i < contours.size(); i++)
+{
+	drawContours(sokgomb, contours, i, Scalar(rand() & 255, rand() & 255, rand() & 255), 2);
+}
+
+//F9.
+17. KONTÚR TERÜLETE ÉS A FEHÉR PONTOS SZÁMA KÖZTI KÜLÖNBSÉG
+int kontur = 0; int feher = 0;
+for (int x = 0; x < gombmaskterulet.rows; x++)
+{
+	for (int y = 0; y < gombmaskterulet.cols; y++)
+	{
+	uchar c = gombmaskterulet.at<uchar>(x, y);
+	if (c == 255)
+	kontur++;
+	else
+	feher++;
+	}
+	}
+	cout << "Kontur pontjai: " << kontur << " Feher Pontok: " << feher<<endl;
+	cout << abs(kontur-feher);
+
+18. ÖSSZES GOMBLYUK KONTÚRJA
+findContours(gombmaskterulet, contours1, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+drawContours(gombterulet, contours1, -1, Scalar(255,0,0), 2);
+
+//F10_K.,11_K.
+19. HÁNY GOMBLYUK?
+int gomblyuk = 0;
+	for (int i = 0; i < contours.size(); i++)
+	{
+	if (hier[i][3] == -1)
+	{
+		drawContours(sokgomb, contours, i, Scalar(0, 255, 0), 2);
+	}
+	else
+	{
+		drawContours(sokgomb, contours, i, Scalar(0, 0, 255), 2);
+		gomblyuk++;
+	}
+	}
+	cout << gomblyuk;
+
+20. HÁNY PIXELBŐL ÁLL A GOMB?
+?
+
+21. MORFOLÓGIAI MŰVELETTEL KÖRVONAL
+?
+
+//F12.
+22. DILATÁLÁS 7X7ES ELLIPSZIS ALAKÚ STRUKTÚRAELEMMEL
+dilate(gombmask, gombdest,  getStructuringElement(MORPH_ELLIPSE, Size(7, 7)))
+
+//F13.
+23. MORFOLÓGIAI ZÁRÁS 7X7ES ELLIPSZIS ALAKÚ STRUKTÚRAELEMMEL
+morphologyEx(gombmask, gombdest, MORPH_CLOSE, getStructuringElement(MORPH_ELLIPSE, Size(7, 7)));
+
+//F14.
+24. MAGASSÁS-SZÉLESSÉG BEFOGLALÓ TÉGLALAP ALAPJÁN
+for (int i = 0; i < contours.size(); i++)
+{
+	Rect r = boundingRect(contours[i]);
+	cout << i + 1 << ". gomb magassága:" << r.height << " szelessege: "<<r.width<<endl;
+	rectangle(sokgomb, r, Scalar(0, 255, 0), 2, 8, 0);
+	}
+
+//F15.
+25. HATÁROZZA MEG A KONTÚR TÉGLALAPJÁT
+for (int i = 0; i < contours.size(); i++)
+	{
+	Rect r = boundingRect(contours[i]);
+	imshow("Aktuális Gomb", sokgomb(r));
+	waitKey(20);
+	}
+
+26. VÁGJA KI A TÉGLALAP ÁLTAL MEGADOTT RÉSZT
+?
+
+27. KÉPEKET JELENÍTSE MEG, VÁRAKOZTASSON 20MS-IG
+waitKey(20);
+
+//F16.
+28. HISZTOGRAMTRANSZFORMÁCIÓVAL JAVÍTSON A KÉPEN
+double ah, fh;
+minMaxLoc(palota, &ah, &fh);
+Mat HisztoNyujtas = (palota - ah) * (255 / (fh - ah)); 
+Histo::showHisto(HisztoNyujtas, "Hisztonyújtott", 1);
+imshow("Palota HisztogramNyújtás", HisztoNyujtas);
+
+//F17.
+29. GAUSS SZŰRES 5X5-ÖS MASZKKAL, 0.6 SZIGMA PARAMÉTERREL
+//mainon kívül:void sobel(const Mat img, Mat& dest) 
+{
+	Mat gx, gy, tmp;
+	// a gyokvonas miatt float-ot hasznalunk a tarolasra!
+	Sobel(img, gx, CV_32F, 1, 0);
+	Sobel(img, gy, CV_32F, 0, 1);
+	cv::sqrt(gx.mul(gx) + gy.mul(gy), tmp);
+	convertScaleAbs(tmp, dest);
+}
+
+GaussianBlur(gombSobel, gombGauss, Size(5,5),0.6);
+
+30. SOBEL OPERÁTOR
+sobel(gombGauss, sobelDest);
+
+//F18.
+31. VÍZSZINTES IRÁNYÚ GRADIENSERŐSSÉG MINDEN PONTBAN
+?
+
+//F20.
+32. NYISSA MEG A VIDEÓT
+VideoCapture cap;
+cap.open("Képek/snow.avi");
+
+33. KÉPKOCKÁKRA MÁSOLJA RÁ JERRY-T, VÁRAKOZTASSON 20 MILLISZEKUNDUMOT
+
+34. BILLENTYŰLEÜTÉSIG VÁRJON
